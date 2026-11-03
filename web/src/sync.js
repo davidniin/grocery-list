@@ -1,10 +1,18 @@
 // Lista local + cola de cambios pendientes. En el súper la cobertura va y viene: cada cambio se ve al momento,
 // se guarda en la cola (localStorage) y se envía en orden cuando hay red. Mientras haya cambios en cola no se
 // recarga la lista del servidor (no se pisa lo local). Sin cambios pendientes, se consulta cada 5 s.
+//
+// Demo (build "npm run build:site", para la landing): datos inventados de demo.js, sin servidor ni clave. Los cambios
+// se quedan en esta pestaña (sessionStorage) y nunca se envían a ningún sitio.
 import { reactive } from 'vue';
+import { META as DEMO_META, demoData } from './demo.js';
 
-function load(k, def) { try { const v = localStorage.getItem('compra.' + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
-function save(k, v) { try { localStorage.setItem('compra.' + k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
+export const DEMO = __DEMO__; // constante de compilación (vite.config.js): en la app normal se elimina demo.js
+const PREFIX = DEMO ? 'compra-demo.' : 'compra.';
+const box = () => (DEMO ? sessionStorage : localStorage);
+function load(k, def) { try { const v = box().getItem(PREFIX + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
+function save(k, v) { try { box().setItem(PREFIX + k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
+if (DEMO && !load('items', null)) for (const [k, v] of Object.entries(demoData())) save(k, v);
 
 // Token: se puede pasar una vez como /#token=... (se guarda y se quita de la barra de direcciones). Va en el
 // fragmento (#), que el navegador nunca envía al servidor: no queda en logs ni en Cloudflare.
@@ -26,7 +34,10 @@ export const S = reactive({
   auth: true, // false = falta el token o no vale
 });
 
-function persist() { save('items', S.items); save('queue', S.queue); save('trips', S.trips); save('templates', S.templates); }
+function persist() {
+  save('items', S.items); save('queue', S.queue); save('trips', S.trips); save('templates', S.templates);
+  if (DEMO) save('products', S.products); // sin servidor, lo aprendido se guarda aquí
+}
 
 function authHeaders() {
   const token = load('token', '');
@@ -59,6 +70,7 @@ function apply(doc) {
 let flushing = null;
 export function flush() { return flushing || (flushing = run().finally(() => { flushing = null; })); }
 async function run() {
+  if (DEMO) return;
   while (S.queue.length) {
     const op = S.queue[0];
     let r;
@@ -72,6 +84,7 @@ async function run() {
 }
 
 export async function pull() {
+  if (DEMO) return;
   await flush();
   if (S.queue.length) return;
   try {
@@ -83,6 +96,7 @@ export async function pull() {
 }
 
 async function loadMeta() {
+  if (DEMO) { S.meta = DEMO_META; return; }
   try {
     const [m, p] = await Promise.all([call('GET', '/v1/meta'), call('GET', '/v1/products')]);
     if (m.ok) save('meta', S.meta = await m.json());
@@ -92,6 +106,7 @@ async function loadMeta() {
 
 // ------------------------------------------------------------ cambios (se ven al momento, se envían después)
 function enqueue(method, path, body) {
+  if (DEMO) { persist(); return; } // en la demo no hay servidor: el cambio ya está en S
   S.queue.push(body === undefined ? { method, path } : { method, path, body });
   persist();
   flush();
@@ -147,7 +162,14 @@ export function setTripTotal(trip, total) {
 }
 
 // Foto del ticket: necesita red. Antes se envía la cola (la compra tiene que existir ya en el servidor).
+const demoReceipts = {}; // demo: la foto se queda en memoria (se pierde al recargar)
 export async function uploadReceipt(trip, file) {
+  if (DEMO) {
+    demoReceipts[trip.id] = await shrink(file);
+    const t = S.trips.find((x) => x.id === trip.id);
+    if (t) { t.receipt = Date.now(); persist(); }
+    return;
+  }
   await flush();
   if (S.queue.some((q) => q.path === '/v1/list/finish' && q.body && q.body.id === trip.id)) throw new Error('Sin conexión: añade el ticket luego desde el historial');
   const blob = await shrink(file);
@@ -167,6 +189,7 @@ export function deleteReceipt(trip) {
 // La foto se descarga con fetch (con la cabecera de acceso, nunca con el token en la URL) y se muestra como blob:.
 // ?v= cambia al subir otra foto, para no ver la vieja de la caché del navegador.
 export async function fetchReceipt(trip) {
+  if (DEMO) { if (demoReceipts[trip.id]) return demoReceipts[trip.id]; throw new Error('En la demo la foto no se guarda al recargar'); }
   const r = await call('GET', '/v1/trips/' + encodeURIComponent(trip.id) + '/receipt?v=' + (+trip.receipt || 1));
   if (!r.ok) throw new Error('No se ha podido cargar el ticket');
   return r.blob();
@@ -197,6 +220,7 @@ export function deleteTemplate(tpl) {
 }
 
 export async function loadTrips() {
+  if (DEMO) return;
   try {
     const r = await call('GET', '/v1/trips');
     if (r.ok && !S.queue.length) {
@@ -215,7 +239,14 @@ export function setToken(t) {
   pull();
 }
 
+// Demo: vuelve a los datos inventados del principio
+export function resetDemo() {
+  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(PREFIX)) sessionStorage.removeItem(k); } catch (e) { /* nada */ }
+  location.reload();
+}
+
 export function start() {
+  if (DEMO) { S.version = 0; loadMeta(); return; }
   loadMeta();
   pull().then(loadTrips); // el historial alimenta "Se te suele acabar" y las estadísticas
   setInterval(() => { if (!document.hidden) pull(); }, 5000);

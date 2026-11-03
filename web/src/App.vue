@@ -2,7 +2,7 @@
 // La compra en el móvil: lista por pasillos. Tocar o deslizar a la derecha tacha, deslizar a la izquierda borra,
 // mantener pulsado (o ⋯) edita. Abajo se añade: "leche x2", varios separados por comas, o los habituales.
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
-import { S, addItem, update, remove, newId, setToken, finishTrip, undoTrip, deleteTrip, loadTrips, uploadReceipt } from './sync.js';
+import { S, DEMO, resetDemo, addItem, update, remove, newId, setToken, finishTrip, undoTrip, deleteTrip, loadTrips, uploadReceipt } from './sync.js';
 import { dueSoon } from './habits.js';
 import { buzz } from './buzz.js';
 import SwipeRow from './SwipeRow.vue';
@@ -232,6 +232,10 @@ onMounted(() => {
 
 <template>
   <div class="app">
+    <div v-if="DEMO" class="demo-bar">
+      <span>🧪 Demo · datos inventados, no se guarda nada</span>
+      <button class="link" @click="resetDemo">Reiniciar</button>
+    </div>
     <header class="top" :class="{ compact }">
       <div class="top-row">
         <h1>La compra</h1>

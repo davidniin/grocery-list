@@ -307,3 +307,8 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Demo de la landing (npm run build:site) */
+.demo-bar { display: flex; white-space: nowrap; overflow: hidden; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 0; padding: 7px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13px; }
+.demo-bar span { overflow: hidden; text-overflow: ellipsis; }
+.demo-bar .link { padding: 0; font-weight: 700; color: var(--accent); }
