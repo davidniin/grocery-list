@@ -1,0 +1,80 @@
+# Grocery list on the homelab.
+#
+#   Internet → Cloudflare Access → tunnel (network "tunnel-grocery") → grocery (web + /v1 API) ── db (Postgres)
+#
+# A single app container serves both the PWA and the API. Only it joins the
+# tunnel network, which is shared with cloudflared and nothing else (each app
+# has its own); the database is reachable from the app container only.
+#
+# Usage: docker compose up -d   (the GitHub Actions deploy does this for you)
+
+name: grocery
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  grocery:
+    <<: [*restart, *logging]
+    image: ghcr.io/davidniin/grocery-list:${IMAGE_TAG:?IMAGE_TAG is not set - deploy.sh writes it to .env, see deploy/README.md}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-grocery}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-grocery}
+      # At least one of the two (see deploy/.env.example); without any the app won't start
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:-}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:-}
+      GROCERY_TOKEN: ${GROCERY_TOKEN:-}
+    # Hardening: read-only filesystem, no Linux capabilities, no privilege escalation
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 200
+    mem_limit: 512m
+    # The image checks every 60 s; check sooner so deploys don't wait a minute
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8790/v1/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    networks:
+      internal: {}
+      tunnel:
+        aliases: [grocery]
+
+  db:
+    <<: [*restart, *logging]
+    image: postgres:${POSTGRES_VERSION:-18}-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-grocery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-grocery}
+    security_opt: [no-new-privileges:true]
+    volumes:
+      # Parent of PGDATA: postgres:18+ refuses a mount at /var/lib/postgresql/data
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery} -d ${POSTGRES_DB:-grocery}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+volumes:
+  db-data:
+
+networks:
+  # internal: no route to the internet; only the app and the database are on it
+  internal:
+    internal: true
+  tunnel:
+    external: true
+    name: tunnel-grocery

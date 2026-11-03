@@ -1,0 +1,22 @@
+{
+  "name": "grocery-server",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "API de la lista de la compra (Node + Hono + PostgreSQL). La usan la app del móvil y el dashboard.",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "test": "node --env-file-if-exists=.env --test --test-concurrency=1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "hono": "^4.13.13",
+    "jose": "^6.1.0",
+    "postgres": "^3.4.5"
+  },
+  "license": "MIT"
+}

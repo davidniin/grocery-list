@@ -1,0 +1,73 @@
+# Dependabot: one weekly pull request with the dependency updates, plus security
+# fixes as soon as they are published (enable "Dependabot security updates" in
+# Settings -> Code security). The PRs run CI on GitHub's own runners, never on the
+# homelab; only merging one deploys it.
+version: 2
+updates:
+  # One entry per folder: with a single "directories" entry Dependabot only
+  # picked up /server, not /web
+  - package-ecosystem: npm
+    directory: /server
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Minor and patch updates of everything in one PR; majors come separately
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Minor and patch updates of everything in one PR; majors come separately
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Repo tooling (ESLint)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      tooling:
+        patterns: ["*"]
+
+  # Base image of the Dockerfile (pinned by digest: Dependabot also bumps the digest)
+  - package-ecosystem: docker
+    directories: ["/"]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Madrid
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      # Moving to a new Node.js major is a decision, not a routine update
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns: ["*"]

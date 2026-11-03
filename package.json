@@ -1,0 +1,25 @@
+{
+  "name": "grocery-list",
+  "private": true,
+  "description": "Lista de la compra compartida: PWA (web/) + API (server/). Este package.json solo tiene las herramientas del repo.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "dev:db": "docker compose -f compose.dev.yml up -d --wait",
+    "test": "npm --prefix server test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "eslint-plugin-vue": "^10.12.0",
+    "globals": "^17.14.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  },
+  "license": "MIT"
+}

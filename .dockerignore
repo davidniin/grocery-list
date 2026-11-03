@@ -1,0 +1,12 @@
+# Solo entra en la imagen lo que copia el Dockerfile; esto evita además mandar secretos al contexto de build
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/*.log
+.git
+.github
+deploy
+server/test
+compose.dev.yml
+*.md
