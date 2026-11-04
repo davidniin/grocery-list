@@ -2,6 +2,10 @@
 
 🇪🇸 [Leer en español](README.es.md)
 
+[![Live demo](https://img.shields.io/badge/live%20demo-try%20it-2f7d5b)](https://davidniin.github.io/grocery-list/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-☕-ffdd00)](https://buymeacoffee.com/davidniin)
+
 Shared grocery list: a web app you install on your phone (PWA) to use at the supermarket, with the same list shown in
 the **Shopping** section of a tablet dashboard. Runs on a home server behind Cloudflare Tunnel + Access
 (see [`deploy/README.md`](deploy/README.md)); every push to `main` deploys automatically after CI passes.
@@ -58,6 +62,18 @@ npm run lint
 npm test        # server tests; the API tests need TEST_DATABASE_URL (in server/.env). They WIPE that database.
 ```
 
+## Landing page and live demo
+
+`site/` is a landing page with the app running inside a phone: **https://davidniin.github.io/grocery-list/**
+(the demo alone at `/demo/`). The demo is the same web app built with `--mode demo`: made-up data from
+`web/src/demo.js`, no server and no token, and changes stay in that browser tab. It is published to GitHub Pages by
+`.github/workflows/pages.yml` on every push to `main` that touches `site/`, `web/` or the screenshots.
+
+```sh
+cd web && npm run dev:demo      # the demo, locally, without a server
+cd web && npm run build:site    # builds site/dist (landing + demo)
+```
+
 ## Access control
 
 Every `/v1` endpoint except `/v1/health` needs one of:
@@ -103,7 +119,17 @@ item by item and doesn't have this problem.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md).
+See [SECURITY.md](SECURITY.md). Found a vulnerability? Please report it privately, never in a public issue.
+
+## Contributing
+
+Ideas, bug reports and pull requests are welcome, in English or Spanish. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+and the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Support
+
+This app is free and always will be. If it's useful to you, you can
+**[buy me a coffee ☕](https://buymeacoffee.com/davidniin)** — thank you!
 
 ## License
 

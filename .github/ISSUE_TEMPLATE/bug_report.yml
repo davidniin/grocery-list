@@ -1,0 +1,52 @@
+name: 🐞 Bug report / Fallo
+description: Something doesn't work as expected / Algo no funciona como debería
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security problem?** Don't report it here: see SECURITY.md. / **¿Problema de seguridad?** No lo pongas aquí: mira SECURITY.md.
+        ⚠️ Don't paste your `GROCERY_TOKEN`, `.env`, Cloudflare Access values, receipt photos or other personal data. / No pegues tu `GROCERY_TOKEN`, el `.env`, los datos de Cloudflare Access, fotos de tickets ni otros datos personales.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / ¿Qué ha pasado?
+      description: And what did you expect? / ¿Y qué esperabas?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Pasos para reproducirlo
+      description: If it happens in the live demo too, say so / Si también pasa en la demo en vivo, dilo
+      placeholder: |
+        1. Open… / Abre…
+        2. Swipe… / Desliza…
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / Versión
+      description: Image tag or commit you're running / Etiqueta de la imagen o commit que usas
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: Where does it run? / ¿Dónde está instalada?
+      options:
+        - Docker Compose (deploy/compose.yml)
+        - Docker, own setup / Docker, a mi manera
+        - Without Docker / Sin Docker
+        - Live demo / Demo en vivo
+        - Other / Otro
+  - type: input
+    id: device
+    attributes:
+      label: Phone and browser / Móvil y navegador
+      placeholder: "Android 15 · Chrome 140 / iPhone · iOS 26 · Safari"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional) / Logs (opcional)
+      description: "`docker compose logs grocery` — remove anything personal / quita lo que sea personal"
+      render: text

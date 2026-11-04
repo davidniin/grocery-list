@@ -2,6 +2,10 @@
 
 🇬🇧 [Read in English](README.md)
 
+[![Demo en vivo](https://img.shields.io/badge/demo%20en%20vivo-pru%C3%A9bala-2f7d5b)](https://davidniin.github.io/grocery-list/)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
+[![Invítame a un café](https://img.shields.io/badge/inv%C3%ADtame%20a%20un%20caf%C3%A9-☕-ffdd00)](https://buymeacoffee.com/davidniin)
+
 Lista de la compra compartida: una web que se instala en el móvil (PWA) para usarla en el súper, con la misma lista en
 la sección **Compra** del dashboard de la tablet. Funciona en el servidor de casa detrás de Cloudflare Tunnel + Access
 (ver [`deploy/README.md`](deploy/README.md)); cada push a `main` se despliega solo después de pasar la CI.
@@ -58,6 +62,18 @@ npm run lint
 npm test        # tests del servidor; los de la API necesitan TEST_DATABASE_URL (en server/.env). BORRAN esa base de datos.
 ```
 
+## Landing y demo en vivo
+
+`site/` es una landing con la app funcionando dentro de un móvil: **https://davidniin.github.io/grocery-list/**
+(la demo sola en `/demo/`). La demo es la misma web compilada con `--mode demo`: datos inventados de `web/src/demo.js`,
+sin servidor ni clave, y los cambios se quedan en esa pestaña. La publica en GitHub Pages
+`.github/workflows/pages.yml` en cada push a `main` que toque `site/`, `web/` o las capturas.
+
+```sh
+cd web && npm run dev:demo      # la demo en local, sin servidor
+cd web && npm run build:site    # genera site/dist (landing + demo)
+```
+
 ## Control de acceso
 
 Todas las rutas `/v1` menos `/v1/health` necesitan una de estas dos cosas:
@@ -103,7 +119,16 @@ elemento y no tiene este problema.
 
 ## Seguridad
 
-Ver [SECURITY.md](SECURITY.md).
+Ver [SECURITY.md](SECURITY.md). ¿Has encontrado una vulnerabilidad? Avisa en privado, nunca en un issue público.
+
+## Contribuir
+
+Ideas, avisos de fallos y pull requests son bienvenidos, en español o en inglés. Lee
+[CONTRIBUTING.md](CONTRIBUTING.md) y el [Código de conducta](CODE_OF_CONDUCT.md).
+
+## Apoyar el proyecto
+
+Esta app es gratis y lo seguirá siendo. Si te resulta útil, puedes **[invitarme a un café ☕](https://buymeacoffee.com/davidniin)**.
 
 ## Licencia
 

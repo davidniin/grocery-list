@@ -21,7 +21,15 @@ export default [
   ...vue.configs['flat/essential'].map((c) => ({ ...c, files: ['web/**/*.{js,vue}'] })),
   {
     files: ['web/**/*.{js,vue}'],
-    languageOptions: { globals: globals.browser },
+    languageOptions: { globals: { ...globals.browser, __DEMO__: 'readonly' } }, // __DEMO__: vite.config.js
+  },
+  {
+    files: ['site/**/*.js'],
+    languageOptions: { globals: globals.browser, sourceType: 'script' },
+  },
+  {
+    files: ['site/build.mjs'],
+    languageOptions: { globals: globals.node },
   },
   {
     files: ['web/public/sw.js'],

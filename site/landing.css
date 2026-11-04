@@ -11,6 +11,7 @@
     --bg: #1b1a18; --card: #262422; --text: #f1ede6; --muted: #a39c90; --line: #36332f;
     --accent: #4fae84; --accent-soft: rgba(79, 174, 132, 0.16);
     --hero: linear-gradient(135deg, #1d5a40 0%, #2a7553 50%, #3f9a71 100%);
+    --hero-text: linear-gradient(135deg, #4fae84 0%, #8fd6b1 100%);
     --shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
   }
 }
@@ -44,7 +45,7 @@ h1, h2, h3 { letter-spacing: -0.02em; line-height: 1.15; }
 .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 48px; max-width: 1120px; margin: 0 auto; padding: 56px 16px 40px; }
 .eyebrow { margin: 0 0 12px; color: var(--accent); font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; }
 .hero h1 { margin: 0; font-size: clamp(36px, 5.4vw, 60px); font-weight: 850; }
-.hero h1 span { display: inline-block; padding-bottom: 0.08em; background: var(--hero); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero h1 span { display: inline-block; padding-bottom: 0.08em; background: var(--hero-text, var(--hero)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .lead { margin: 18px 0 0; color: var(--muted); font-size: 19px; max-width: 560px; }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 26px 0 0; padding: 0; list-style: none; }
 .pills li { padding: 6px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
