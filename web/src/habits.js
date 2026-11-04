@@ -78,4 +78,4 @@ export function stats(trips, now = new Date()) {
   };
 }
 
-export const eur = (n) => (n == null ? '—' : new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n));
+export const eur = (n, loc = 'es-ES') => (n == null ? '—' : new Intl.NumberFormat(loc, { style: 'currency', currency: 'EUR' }).format(n));

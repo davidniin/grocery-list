@@ -5,14 +5,21 @@
 // Demo (build "npm run build:site", para la landing): datos inventados de demo.js, sin servidor ni clave. Los cambios
 // se quedan en esta pestaña (sessionStorage) y nunca se envían a ningún sitio.
 import { reactive } from 'vue';
-import { META as DEMO_META, demoData } from './demo.js';
+import { demoData } from './demo.js';
+import { t, lang } from './i18n/index.js';
 
 export const DEMO = __DEMO__; // constante de compilación (vite.config.js): en la app normal se elimina demo.js
 const PREFIX = DEMO ? 'compra-demo.' : 'compra.';
 const box = () => (DEMO ? sessionStorage : localStorage);
 function load(k, def) { try { const v = box().getItem(PREFIX + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
 function save(k, v) { try { box().setItem(PREFIX + k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
-if (DEMO && !load('items', null)) for (const [k, v] of Object.entries(demoData())) save(k, v);
+function clearDemo() { try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(PREFIX)) sessionStorage.removeItem(k); } catch (e) { /* nada */ } }
+// Demo: datos inventados en el idioma de la app (si cambia el idioma, se vuelven a crear en el otro)
+if (DEMO && (!load('items', null) || load('lang', null) !== lang.value)) {
+  clearDemo();
+  for (const [k, v] of Object.entries(demoData(lang.value))) save(k, v);
+  save('lang', lang.value);
+}
 
 // Token: se puede pasar una vez como /#token=... (se guarda y se quita de la barra de direcciones). Va en el
 // fragmento (#), que el navegador nunca envía al servidor: no queda en logs ni en Cloudflare.
@@ -36,8 +43,18 @@ export const S = reactive({
 
 function persist() {
   save('items', S.items); save('queue', S.queue); save('trips', S.trips); save('templates', S.templates);
-  if (DEMO) save('products', S.products); // sin servidor, lo aprendido se guarda aquí
+  if (DEMO) { save('products', S.products); save('meta', S.meta); } // sin servidor, todo se guarda aquí
 }
+
+// Tiendas que llegan con la lista (las ha podido cambiar otra persona). Las nuevas usan el orden normal de pasillos.
+function setStores(stores) {
+  if (!S.meta || !Array.isArray(stores)) return;
+  const catOrder = Object.assign({}, S.meta.catOrder);
+  for (const x of stores) if (!catOrder[x.id]) catOrder[x.id] = S.meta.cats;
+  S.meta = Object.assign({}, S.meta, { stores, catOrder });
+  save('meta', S.meta);
+}
+const storeOpsPending = () => S.queue.some((q) => q.path.startsWith('/v1/stores/'));
 
 function authHeaders() {
   const token = load('token', '');
@@ -63,6 +80,7 @@ function apply(doc) {
   S.version = doc.version;
   S.items = doc.data.items;
   if (doc.data.templates) S.templates = doc.data.templates;
+  if (doc.data.stores) setStores(doc.data.stores);
   persist();
 }
 
@@ -96,10 +114,15 @@ export async function pull() {
 }
 
 async function loadMeta() {
-  if (DEMO) { S.meta = DEMO_META; return; }
+  if (DEMO) return; // la demo ya tiene su meta guardada (demo.js)
   try {
     const [m, p] = await Promise.all([call('GET', '/v1/meta'), call('GET', '/v1/products')]);
-    if (m.ok) save('meta', S.meta = await m.json());
+    if (m.ok) {
+      const meta = await m.json();
+      if (storeOpsPending() && S.meta) meta.stores = S.meta.stores; // lo hecho aquí y aún no enviado manda
+      save('meta', S.meta = meta);
+      setStores(meta.stores);
+    }
     if (p.ok) save('products', S.products = await p.json());
   } catch (e) { /* sin red: se usan los guardados */ }
 }
@@ -171,13 +194,13 @@ export async function uploadReceipt(trip, file) {
     return;
   }
   await flush();
-  if (S.queue.some((q) => q.path === '/v1/list/finish' && q.body && q.body.id === trip.id)) throw new Error('Sin conexión: añade el ticket luego desde el historial');
+  if (S.queue.some((q) => q.path === '/v1/list/finish' && q.body && q.body.id === trip.id)) throw new Error(t('receipt.uploadOffline'));
   const blob = await shrink(file);
   const fd = new FormData();
   fd.append('file', blob, 'ticket.jpg');
   let r;
-  try { r = await fetch('/v1/trips/' + encodeURIComponent(trip.id) + '/receipt', { method: 'POST', headers: authHeaders(), body: fd }); } catch (e) { S.online = false; throw new Error('Sin conexión: añade el ticket luego desde el historial', { cause: e }); }
-  if (!r.ok) throw new Error(((await r.json().catch(() => ({}))).error) || 'No se ha podido subir el ticket');
+  try { r = await fetch('/v1/trips/' + encodeURIComponent(trip.id) + '/receipt', { method: 'POST', headers: authHeaders(), body: fd }); } catch (e) { S.online = false; throw new Error(t('receipt.uploadOffline'), { cause: e }); }
+  if (!r.ok) throw new Error(((await r.json().catch(() => ({}))).error) || t('receipt.uploadFailed'));
   const t = S.trips.find((x) => x.id === trip.id);
   if (t) { t.receipt = Date.now(); persist(); } // el número sirve también para no ver la foto vieja en caché
 }
@@ -189,9 +212,9 @@ export function deleteReceipt(trip) {
 // La foto se descarga con fetch (con la cabecera de acceso, nunca con el token en la URL) y se muestra como blob:.
 // ?v= cambia al subir otra foto, para no ver la vieja de la caché del navegador.
 export async function fetchReceipt(trip) {
-  if (DEMO) { if (demoReceipts[trip.id]) return demoReceipts[trip.id]; throw new Error('En la demo la foto no se guarda al recargar'); }
+  if (DEMO) { if (demoReceipts[trip.id]) return demoReceipts[trip.id]; throw new Error(t('receipt.demoGone')); }
   const r = await call('GET', '/v1/trips/' + encodeURIComponent(trip.id) + '/receipt?v=' + (+trip.receipt || 1));
-  if (!r.ok) throw new Error('No se ha podido cargar el ticket');
+  if (!r.ok) throw new Error(t('receipt.loadFailed'));
   return r.blob();
 }
 // Reduce la foto a ~1600 px en JPEG (un ticket se lee bien y ocupa ~200 KB)
@@ -206,6 +229,34 @@ async function shrink(file, max = 1600) {
     const out = await new Promise((res) => c.toBlob(res, 'image/jpeg', 0.82));
     return out || file;
   } catch (e) { return file; }
+}
+
+// ------------------------------------------------------------ tiendas
+// id a partir del nombre ("Lidl Centro" → "lidl-centro-k3f9"): legible y sin choques entre dos móviles
+function storeId(name) {
+  const slug = name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+  return (slug || 's') + '-' + Math.random().toString(36).slice(2, 6);
+}
+// Crea o renombra. Devuelve la tienda, o un error para enseñar (nombre vacío o repetido).
+export function saveStore(name, store) {
+  name = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!name) return { error: '' };
+  const stores = S.meta ? S.meta.stores : [];
+  if (stores.some((x) => (!store || x.id !== store.id) && x.name.toLowerCase() === name.toLowerCase())) return { error: t('stores.exists') };
+  const st = { id: store ? store.id : storeId(name), name };
+  setStores(store ? stores.map((x) => (x.id === st.id ? st : x)) : stores.concat([st]));
+  enqueue('PUT', '/v1/stores/' + encodeURIComponent(st.id), { name });
+  return { store: st };
+}
+// Lo que estaba en esa tienda se queda en la lista, sin tienda. Siempre queda al menos una.
+export function deleteStore(store) {
+  const stores = S.meta ? S.meta.stores : [];
+  if (stores.length < 2) return { error: t('stores.last') };
+  setStores(stores.filter((x) => x.id !== store.id));
+  for (const x of S.items) if (x.store === store.id) x.store = null;
+  for (const p of S.products) if (p.store === store.id) p.store = null;
+  enqueue('DELETE', '/v1/stores/' + encodeURIComponent(store.id));
+  return {};
 }
 
 // ------------------------------------------------------------ plantillas
@@ -241,7 +292,7 @@ export function setToken(t) {
 
 // Demo: vuelve a los datos inventados del principio
 export function resetDemo() {
-  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(PREFIX)) sessionStorage.removeItem(k); } catch (e) { /* nada */ }
+  clearDemo();
   location.reload();
 }
 

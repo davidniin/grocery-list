@@ -12,7 +12,7 @@ Thanks for wanting to help! Bug reports, ideas, translations, docs and code are 
   discuss it before writing the code, so your work isn't wasted.
 - **Security problems:** never in a public issue. See [SECURITY.md](SECURITY.md).
 - Good places to start: issues labelled `good first issue` and `help wanted`, **your supermarket's aisles** and the
-  starter catalogue (`server/src/catalog.js`), and an English version of the app (today its texts are in Spanish).
+  starter catalogue (`server/src/catalog.js`), and **a new language** (see "Languages" in the README).
 
 ## Set up
 
@@ -51,6 +51,8 @@ and its live demo: `cd web && npm run build:site`, then serve `site/dist/` with 
 - Keep it small: add a dependency only if it saves a lot of code, and pin its version.
 - Many code comments are in Spanish; new comments can be in English or Spanish.
 - Database changes go in a new `server/migrations/NNN_name.sql`; never edit one that has already been released.
+- **No hard-coded user-facing text**: add it to `web/src/i18n/es.js` **and** `en.js` (same key) and use `t('key')`.
+  `npm run test:web` fails if a key is missing in one language.
 - **Never include real personal data** in code, tests, fixtures or screenshots: no real receipts, names, addresses or
   tokens. Use the demo for screenshots and made-up data in tests.
 
@@ -78,7 +80,7 @@ en inglés.
   abre un issue para hablarlo antes de programar, así no pierdes trabajo.
 - **Problemas de seguridad:** nunca en un issue público. Mira [SECURITY.md](SECURITY.md).
 - Buenos sitios para empezar: los issues con `good first issue` y `help wanted`, **los pasillos de tu supermercado** y
-  el catálogo inicial (`server/src/catalog.js`), y una versión en inglés de la app (hoy los textos están en español).
+  el catálogo inicial (`server/src/catalog.js`), y **un idioma nuevo** (mira «Idiomas» en el README).
 
 ## Preparar el entorno
 
@@ -118,6 +120,8 @@ en vivo: `cd web && npm run build:site`, y sirve `site/dist/` con cualquier serv
 - Muchos comentarios del código están en español; los nuevos pueden ir en español o en inglés.
 - Los cambios de base de datos van en una migración nueva `server/migrations/NNN_nombre.sql`; nunca se edita una que
   ya se ha publicado.
+- **Ningún texto de la interfaz escrito a mano en el código**: añádelo a `web/src/i18n/es.js` **y** `en.js` (misma
+  clave) y usa `t('clave')`. `npm run test:web` falla si falta una clave en un idioma.
 - **Nunca pongas datos personales reales** en código, tests, datos de ejemplo o capturas: ni tickets, ni nombres, ni
   direcciones, ni claves reales. Usa la demo para las capturas y datos inventados en los tests.
 

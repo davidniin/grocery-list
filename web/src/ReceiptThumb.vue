@@ -3,6 +3,7 @@
 // al tocarla se abre en grande en otra pestaña.
 import { ref, watch, onBeforeUnmount } from 'vue';
 import { fetchReceipt } from './sync.js';
+import { t } from './i18n/index.js';
 
 const props = defineProps({ trip: { type: Object, required: true } });
 const url = ref('');
@@ -24,6 +25,6 @@ onBeforeUnmount(release);
 </script>
 
 <template>
-  <a v-if="url" :href="url" target="_blank" rel="noopener"><img :src="url" alt="Ticket" /></a>
-  <span v-else-if="failed" class="receipt-off">🧾 Sin conexión</span>
+  <a v-if="url" :href="url" target="_blank" rel="noopener"><img :src="url" :alt="t('receipt.alt')" /></a>
+  <span v-else-if="failed" class="receipt-off">{{ t('receipt.offline') }}</span>
 </template>

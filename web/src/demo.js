@@ -1,11 +1,14 @@
 // Datos inventados para la demo de la landing (npm run build:site): la app funciona sin servidor y sin clave.
 // Las fechas son relativas a hoy para que el historial, "Se te suele acabar" y las estadísticas parezcan actuales.
+// En español o en inglés (productos y tiendas; los pasillos se guardan siempre en español, como en la app real).
 // META es una copia de lo que devuelve GET /v1/meta (server/src/catalog.js); si cambia allí, cámbialo aquí.
 
-const STORES = [{ id: 'super', name: 'Mercadona' }, { id: 'bonpreu', name: 'Bonpreu' }];
+const STORES = {
+  es: [{ id: 'super', name: 'Mercadona' }, { id: 'bonpreu', name: 'Bonpreu' }],
+  en: [{ id: 'super', name: 'Supermarket' }, { id: 'bonpreu', name: 'Corner shop' }],
+};
 const CATS = ['Fruta y verdura', 'Panadería', 'Carne y pescado', 'Lácteos y huevos', 'Despensa', 'Congelados', 'Picoteo', 'Hogar'];
-export const META = {
-  stores: STORES,
+const META = {
   cats: CATS,
   catOrder: {
     all: CATS,
@@ -29,6 +32,20 @@ const P = [
   ['Macarrones', 'Despensa', 'super', 5, 0], ['Chocolate negro', 'Picoteo', 'bonpreu', 4, 0],
   ['Detergente', 'Hogar', 'bonpreu', 8, 0], ['Guisantes congelados', 'Congelados', 'super', 6, 0],
 ];
+// Nombres en inglés de los productos inventados
+const EN = {
+  'Leche semidesnatada': 'Semi-skimmed milk', Pan: 'Bread', Plátanos: 'Bananas', Huevos: 'Eggs', 'Yogur griego': 'Greek yoghurt',
+  Tomates: 'Tomatoes', Manzanas: 'Apples', 'Pechugas de pollo': 'Chicken breasts', 'Café en grano': 'Coffee beans',
+  'Aceite de oliva': 'Olive oil', 'Queso curado': 'Cheddar', 'Papel de cocina': 'Kitchen roll', 'Pastillas lavavajillas': 'Dishwasher tablets',
+  Arroz: 'Rice', Espinacas: 'Spinach', Salmón: 'Salmon', Macarrones: 'Penne', 'Chocolate negro': 'Dark chocolate',
+  Detergente: 'Laundry detergent', 'Guisantes congelados': 'Frozen peas', Aguacates: 'Avocados', Fresas: 'Strawberries',
+  'Pan de payés': 'Sourdough loaf', 'Carne picada': 'Minced beef', Gambas: 'Prawns', Parmesano: 'Parmesan', 'Tomate frito': 'Tomato sauce',
+  Espaguetis: 'Spaghetti', Helado: 'Ice cream', 'Patatas fritas': 'Crisps', 'Bolsas de basura': 'Bin bags', Cebollas: 'Onions',
+  Limones: 'Lemons', Cruasanes: 'Croissants', Bacon: 'Bacon', Mantequilla: 'Butter', Garbanzos: 'Chickpeas', Miel: 'Honey', Pizza: 'Pizza',
+  Galletas: 'Biscuits', 'Papel higiénico': 'Toilet paper', 'Pasta de dientes': 'Toothpaste', 'Muslos de pollo': 'Chicken thighs',
+  'Pan de hamburguesa': 'Burger buns', maduros: 'ripe', Desayunos: 'Breakfasts', Barbacoa: 'Barbecue',
+};
+
 const PRICE = { 'Aceite de oliva': 8.9, 'Café en grano': 6.5, Salmón: 7.8, 'Pechugas de pollo': 5.4, Detergente: 9.9, 'Pastillas lavavajillas': 6.2, 'Queso curado': 5.1 };
 
 const ago = (days, hour) => { const d = new Date(Date.now() - days * 864e5); d.setHours(hour, (days * 7) % 60, 0, 0); return d.toISOString(); };
@@ -36,7 +53,19 @@ let seq = 0;
 const id = (p) => 'demo-' + p + (seq++).toString(36);
 const item = ([name, cat, store], qty = 1) => ({ id: id('i'), name, cat, qty, store, note: '' });
 
-export function demoData() {
+export function demoData(lang = 'es') {
+  const tr = (x) => (lang === 'en' && EN[x]) || x;
+  const out = demoDataEs();
+  const name = (x) => Object.assign(x, { name: tr(x.name) });
+  for (const x of out.items) { name(x); x.note = tr(x.note); }
+  for (const tp of out.trips) tp.items.forEach(name);
+  out.products.forEach(name);
+  for (const tp of out.templates) { name(tp); tp.items.forEach(name); }
+  out.meta = { stores: STORES[lang] || STORES.es, cats: META.cats, catOrder: META.catOrder, usuals: META.usuals.map(tr) };
+  return out;
+}
+
+function demoDataEs() {
   // Una compra cada 4 días durante ~6 meses (i = 0 es la más reciente, hace 3 días)
   const trips = [];
   for (let i = 0; i < 45; i++) {

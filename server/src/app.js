@@ -6,12 +6,13 @@ import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { CONFIG } from './config.js';
-import { STORES, CATS, CAT_ORDER, USUALS } from './catalog.js';
-import { sql } from './db.js';
+import { CATS, USUALS } from './catalog.js';
+import { sql, loadStores, catOrder } from './db.js';
 import { accessCheck } from './auth.js';
 import { list } from './routes/list.js';
 import { trips } from './routes/trips.js';
 import { templates } from './routes/templates.js';
+import { stores } from './routes/stores.js';
 
 const JSON_MAX_BYTES = 512 * 1024;
 
@@ -62,12 +63,16 @@ export function createApp(config = CONFIG) {
       return c.json({ ok: false, db: false }, 503);
     }
   });
-  api.get('/meta', (c) => c.json({ stores: STORES, cats: CATS, catOrder: CAT_ORDER, usuals: USUALS }));
+  api.get('/meta', async (c) => {
+    const st = await loadStores();
+    return c.json({ stores: st, cats: CATS, catOrder: catOrder(st), usuals: USUALS });
+  });
   api.get('/products', async (c) => c.json(await sql`
     select name, cat, store, uses from grocery_product order by uses desc, last_used desc nulls last, name`));
   api.route('/', list);
   api.route('/', trips);
   api.route('/', templates);
+  api.route('/', stores);
 
   app.route('/v1', api);
 
