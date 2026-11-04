@@ -7,7 +7,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "dev:db": "docker compose -f compose.dev.yml up -d --wait",
-    "test": "npm --prefix server test"
+    "test": "npm run test:web && npm --prefix server test",
+    "test:web": "node --test \"web/test/*.test.js\""
   },
   "engines": {
     "node": ">=22"

@@ -4,7 +4,8 @@
 import { readdir, readFile } from 'node:fs/promises';
 import postgres from 'postgres';
 import { CONFIG } from './config.js';
-import { CATALOG } from './catalog.js';
+import { CATALOG, STORES, CATS, CAT_ORDER } from './catalog.js';
+import { setStoreIds } from './validate.js';
 
 export const sql = postgres(CONFIG.databaseUrl, { max: 5, onnotice: () => {} });
 
@@ -47,6 +48,26 @@ export async function migrate({ retries = 30 } = {}) {
     const rows = CATALOG.map(([name, cat]) => ({ key: name.toLowerCase(), name, cat }));
     await sql`insert into grocery_product ${sql(rows, 'key', 'name', 'cat')} on conflict do nothing`;
   }
+  const [{ s }] = await sql`select count(*)::int as s from grocery_store`;
+  if (!s) {
+    const rows = STORES.map((x, i) => ({ id: x.id, name: x.name, position: i }));
+    await sql`insert into grocery_store ${sql(rows, 'id', 'name', 'position')} on conflict do nothing`;
+  }
+  await loadStores();
+}
+
+// ------------------------------------------------------------ tiendas
+// Las tiendas, en su orden. De paso actualiza las que acepta la validación (cleanStore).
+export async function loadStores(db = sql) {
+  const stores = await db`select id, name from grocery_store order by position, created_at, id`;
+  setStoreIds(stores.map((x) => x.id));
+  return stores;
+}
+
+// Orden de los pasillos por tienda: el de catalog.js, y para las tiendas nuevas el normal (el dashboard lo
+// necesita para cada tienda)
+export function catOrder(stores) {
+  return Object.assign({ all: CATS }, ...stores.map((x) => ({ [x.id]: CAT_ORDER[x.id] || CATS })));
 }
 
 // ------------------------------------------------------------ lista
@@ -56,7 +77,8 @@ export async function readList() {
   const [st] = await sql`select version, updated_at from grocery_state where id = 1`;
   const items = await sql`select id, name, cat, qty, store, done, note from grocery_item order by created_at, id`;
   const templates = await sql`select id, name, items from grocery_template order by lower(name), id`;
-  return { version: st.version, updatedAt: st.updated_at, data: { items, templates } };
+  const stores = await sql`select id, name from grocery_store order by position, created_at, id`;
+  return { version: st.version, updatedAt: st.updated_at, data: { items, templates, stores } };
 }
 
 // Aplica un cambio y sube la versión en la misma transacción. Devuelve la lista nueva.
