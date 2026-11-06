@@ -1,15 +1,23 @@
 // Validación de lo que llega por la API (del móvil o del dashboard). Funciones puras: sin base de datos.
 import { STORE_IDS } from './catalog.js';
 
-export const LIMITS = { id: 64, name: 120, cat: 40, note: 500, templateName: 60, templateItems: 200, listItems: 1000 };
+export const LIMITS = { id: 64, name: 120, cat: 40, note: 500, templateName: 60, storeName: 40, stores: 30, templateItems: 200, listItems: 1000 };
 
 export function newId() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 // Identificador que pone el cliente (o viene en la URL): texto, recortado
 export function cleanId(v) { return String(v ?? '').trim().slice(0, LIMITS.id); }
 
+// Tiendas que existen. Empiezan siendo las de catalog.js; al arrancar y con cada cambio se cargan de la base de
+// datos (db.js, loadStores()). Un solo proceso: basta con tenerlas en memoria.
+const storeIds = new Set(STORE_IDS);
+export function setStoreIds(ids) { storeIds.clear(); for (const id of ids) storeIds.add(id); }
+
 // Tienda: una de las conocidas, o null
-export function cleanStore(v) { return v && STORE_IDS.has(String(v)) ? String(v) : null; }
+export function cleanStore(v) { return v && storeIds.has(String(v)) ? String(v) : null; }
+
+// Nombre de una tienda nueva o renombrada: texto recortado, sin espacios de más
+export function cleanStoreName(v) { return String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, LIMITS.storeName); }
 
 // Deja solo campos conocidos y con el tipo correcto. partial = solo los campos que vienen (PATCH).
 export function clean(x, partial) {

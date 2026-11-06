@@ -22,7 +22,7 @@ before(async () => {
   process.env.GROCERY_TOKEN = TOKEN;
   const db = await import('../src/db.js');
   sql = db.sql;
-  await sql`drop table if exists grocery_receipt, grocery_trip, grocery_template, grocery_item, grocery_product, grocery_state, schema_migrations cascade`;
+  await sql`drop table if exists grocery_receipt, grocery_trip, grocery_template, grocery_store, grocery_item, grocery_product, grocery_state, schema_migrations cascade`;
   await db.migrate({ retries: 1 });
   await db.migrate({ retries: 1 }); // dos veces: no debe fallar ni repetir nada
   app = (await import('../src/app.js')).createApp();
@@ -31,7 +31,7 @@ after(async () => { if (sql) await sql.end(); });
 
 test('migraciones: aplicadas una vez y catálogo cargado', { skip }, async () => {
   const rows = await sql`select version from schema_migrations`;
-  assert.deepEqual(rows.map((r) => r.version), [1]);
+  assert.deepEqual(rows.map((r) => r.version), [1, 2]);
   const r = await req('GET', '/v1/products');
   assert.ok((await r.json()).length > 10);
 });
@@ -106,6 +106,45 @@ test('plantillas', { skip }, async () => {
   assert.deepEqual((await r.json()).data.templates[0].items, [{ name: 'Carbón', cat: 'Otros', qty: 2, store: null }]);
   r = await req('DELETE', '/v1/templates/p1');
   assert.equal((await r.json()).data.templates.length, 0);
+});
+
+test('tiendas: crear, renombrar, borrar; la lista y /meta las llevan', { skip }, async () => {
+  let r = await req('GET', '/v1/meta');
+  let meta = await r.json();
+  assert.deepEqual(meta.stores.map((s) => s.id), ['super', 'bonpreu']);
+  assert.deepEqual(Object.keys(meta.catOrder).sort(), ['all', 'bonpreu', 'super']);
+
+  r = await req('PUT', '/v1/stores/lidl-1', { name: '  Lidl   Centro ' });
+  assert.equal(r.status, 200);
+  assert.deepEqual((await r.json()).data.stores.at(-1), { id: 'lidl-1', name: 'Lidl Centro' });
+  r = await req('PUT', '/v1/stores/lidl-1', { name: 'Lidl Centro' }); // reintento: no duplica
+  assert.equal((await r.json()).data.stores.length, 3);
+  meta = await (await req('GET', '/v1/meta')).json();
+  assert.deepEqual(meta.catOrder['lidl-1'], meta.cats); // el dashboard necesita un orden para cada tienda
+
+  assert.equal((await req('PUT', '/v1/stores/otra', { name: 'lidl centro' })).status, 409);
+  assert.equal((await req('PUT', '/v1/stores/Mal%20Id', { name: 'X' })).status, 400);
+  assert.equal((await req('PUT', '/v1/stores/x', { name: ' ' })).status, 400);
+
+  // Ya se puede usar en la lista; al borrarla, lo suyo se queda sin tienda
+  r = await req('POST', '/v1/list/items', { id: 'st1', name: 'Pan', store: 'lidl-1' });
+  assert.equal((await r.json()).item.store, 'lidl-1');
+  r = await req('PUT', '/v1/stores/lidl-1', { name: 'Lidl' });
+  assert.equal((await r.json()).data.stores.at(-1).name, 'Lidl');
+  r = await req('DELETE', '/v1/stores/lidl-1');
+  const doc = await r.json();
+  assert.equal(doc.data.stores.length, 2);
+  assert.equal(doc.data.items.find((x) => x.id === 'st1').store, null);
+  r = await req('POST', '/v1/list/items', { id: 'st2', name: 'Leche', store: 'lidl-1' });
+  assert.equal((await r.json()).item.store, null);
+  assert.equal((await req('DELETE', '/v1/stores/lidl-1')).status, 404);
+
+  // Siempre queda al menos una
+  await req('DELETE', '/v1/stores/bonpreu');
+  assert.equal((await req('DELETE', '/v1/stores/super')).status, 400);
+  await req('PUT', '/v1/stores/bonpreu', { name: 'Bonpreu' });
+  await req('DELETE', '/v1/list/items/st1');
+  await req('DELETE', '/v1/list/items/st2');
 });
 
 test('los errores internos no se cuentan al cliente', { skip }, async () => {

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:demo": "vite --host --mode demo",
+    "build:site": "vite build --mode demo --base ./ --outDir ../site/dist/demo --emptyOutDir && node ../site/build.mjs"
   },
   "dependencies": {
     "vue": "^3.5.13"
