@@ -1,6 +1,6 @@
 // Service worker mínimo: la app abre sin cobertura (en el súper). La API (/v1) nunca se cachea aquí:
 // los datos sin red los guarda la propia app en localStorage (src/sync.js).
-const CACHE = 'compra-v3';
+const CACHE = 'compra-v4';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon-192.png'])).then(() => self.skipWaiting()));

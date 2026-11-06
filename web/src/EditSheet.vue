@@ -5,7 +5,7 @@ import { reactive, ref } from 'vue';
 import { saveStore } from './sync.js';
 import { t, catLabel } from './i18n/index.js';
 
-const props = defineProps({ item: Object, meta: Object, catIcon: Function });
+const props = defineProps({ item: Object, meta: Object });
 const emit = defineEmits(['close', 'save', 'remove']);
 const f = reactive({ name: props.item.name, qty: props.item.qty, store: props.item.store, cat: props.item.cat, note: props.item.note || '' });
 const cats = props.meta.cats.concat(['Otros']).concat(props.meta.cats.includes(props.item.cat) || props.item.cat === 'Otros' ? [] : [props.item.cat]);
@@ -56,7 +56,7 @@ function save() {
       <p v-if="err" class="sheet-err">{{ err }}</p>
 
       <label>{{ t('edit.aisle') }}
-        <select v-model="f.cat"><option v-for="c in cats" :key="c" :value="c">{{ catIcon ? catIcon(c) + ' ' : '' }}{{ catLabel(c) }}</option></select>
+        <select v-model="f.cat"><option v-for="c in cats" :key="c" :value="c">{{ catLabel(c) }}</option></select>
       </label>
       <label>{{ t('edit.note') }}<input v-model="f.note" type="text" :placeholder="t('edit.notePh')" /></label>
 

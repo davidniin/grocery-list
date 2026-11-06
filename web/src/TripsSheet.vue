@@ -6,7 +6,7 @@ import ReceiptThumb from './ReceiptThumb.vue';
 import { stats, eur as euro } from './habits.js';
 import { t, locale } from './i18n/index.js';
 
-const props = defineProps({ storeName: Function, catIcon: Function, pending: Array });
+const props = defineProps({ storeName: Function, pending: Array });
 const emit = defineEmits(['close', 'add', 'remove-trip']);
 
 const tab = ref('trips');
@@ -96,14 +96,14 @@ const monthLabel = (d, long) => {
         <section v-for="tr in S.trips" :key="tr.id" class="trip">
           <button class="trip-row" @click="toggle(tr.id)">
             <span class="trip-when">{{ when(tr.finished_at) }}<small>{{ storeLabel(tr.store) }} · {{ plural(tr.n, 'n.products') }}</small></span>
-            <span v-if="tr.receipt" :title="t('trips.withReceipt')">🧾</span>
+            <i v-if="tr.receipt" class="rcpt" :title="t('trips.withReceipt')"></i>
             <b class="trip-total" :class="{ none: tr.total == null }">{{ tr.total == null ? t('trips.noAmount') : eur(tr.total) }}</b>
             <span class="caret" :class="{ open: openId === tr.id }">▸</span>
           </button>
           <div v-if="openId === tr.id" class="trip-body">
             <ul>
               <li v-for="x in tr.items" :key="x.id">
-                <span>{{ props.catIcon(x.cat) }}</span>{{ x.name }}<b v-if="x.qty > 1" class="qty">×{{ x.qty }}</b>
+                {{ x.name }}<b v-if="x.qty > 1" class="qty">×{{ x.qty }}</b>
               </li>
             </ul>
 
@@ -143,13 +143,13 @@ const monthLabel = (d, long) => {
         <p v-if="!S.templates.length" class="trips-empty">{{ t('tpl.empty') }}</p>
         <section v-for="tp in S.templates" :key="tp.id" class="trip">
           <button class="trip-row" @click="tplOpen = tplOpen === tp.id ? null : tp.id">
-            <span class="trip-when">📋 {{ tp.name }}<small>{{ plural(tp.items.length, 'n.products') }}</small></span>
+            <span class="trip-when">{{ tp.name }}<small>{{ plural(tp.items.length, 'n.products') }}</small></span>
             <span class="caret" :class="{ open: tplOpen === tp.id }">▸</span>
           </button>
           <div v-if="tplOpen === tp.id" class="trip-body">
             <ul>
               <li v-for="(x, i) in tp.items" :key="i" class="tpl-item">
-                <span>{{ props.catIcon(x.cat) }}</span>{{ x.name }}<b v-if="x.qty > 1" class="qty">×{{ x.qty }}</b>
+                {{ x.name }}<b v-if="x.qty > 1" class="qty">×{{ x.qty }}</b>
                 <button class="tpl-x" :aria-label="t('tpl.removeItem', { name: x.name })" @click="dropFromTemplate(tp, i)">×</button>
               </li>
             </ul>
@@ -203,7 +203,7 @@ const monthLabel = (d, long) => {
 
           <h3>{{ t('stats.top') }}</h3>
           <div v-for="(p, i) in st.top" :key="p.name" class="rank-row">
-            <span>{{ i + 1 }}. {{ props.catIcon(p.cat) }} {{ p.name }}</span>
+            <span>{{ i + 1 }}. {{ p.name }}</span>
             <small></small>
             <b>{{ plural(p.times, 'n.times') }}</b>
           </div>

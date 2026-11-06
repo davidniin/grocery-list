@@ -16,19 +16,18 @@ import StoresSheet from './StoresSheet.vue';
 const FALLBACK = { stores: [{ id: 'super', name: 'Mercadona' }], cats: [], catOrder: {}, usuals: [] };
 const meta = computed(() => S.meta || FALLBACK);
 
-// Icono y color de cada pasillo (los pasillos se guardan en español; catLabel() da el nombre en el idioma de la app)
-const CAT_STYLE = {
-  'Fruta y verdura': ['🥦', '#4caf50'],
-  'Panadería': ['🥖', '#d39b3a'],
-  'Carne y pescado': ['🥩', '#e0675a'],
-  'Lácteos y huevos': ['🧀', '#e3bd3b'],
-  'Despensa': ['🥫', '#c97a3e'],
-  'Congelados': ['🧊', '#4ea3e0'],
-  'Picoteo': ['🍿', '#b07ccf'],
-  'Hogar': ['🧻', '#7f93ab'],
+// Color de cada pasillo (los pasillos se guardan en español; catLabel() da el nombre en el idioma de la app)
+const CAT_COLOR = {
+  'Fruta y verdura': '#4caf50',
+  'Panadería': '#d39b3a',
+  'Carne y pescado': '#e0675a',
+  'Lácteos y huevos': '#e3bd3b',
+  'Despensa': '#c97a3e',
+  'Congelados': '#4ea3e0',
+  'Picoteo': '#b07ccf',
+  'Hogar': '#7f93ab',
 };
-const catIcon = (c) => (CAT_STYLE[c] || ['🛒'])[0];
-const catColor = (c) => (CAT_STYLE[c] || [0, '#9d968b'])[1];
+const catColor = (c) => CAT_COLOR[c] || '#9d968b';
 
 function pref(k, def) { try { return localStorage.getItem('compra.' + k) || def; } catch (e) { return def; } }
 const store = ref(pref('store', 'all'));
@@ -240,7 +239,7 @@ function finish({ total, file }) {
   showDone.value = false;
   const left = open.value.length;
   say(t('toast.saved', { n: tr.n }) + (left ? t('toast.savedLeft', { n: left }) : ''), () => undoTrip(tr), 6000);
-  if (file) uploadReceipt(tr, file).catch((e) => say('🧾 ' + e.message));
+  if (file) uploadReceipt(tr, file).catch((e) => say(e.message));
 }
 function openTrips() { loadTrips(); showTrips.value = true; }
 // Añadir de golpe (una compra pasada o una plantilla): solo lo que no esté ya pendiente en la lista
@@ -325,7 +324,6 @@ onMounted(() => {
     <Transition name="fade" mode="out-in">
       <main :key="store" class="list">
         <div v-if="!open.length" class="empty">
-          <div class="empty-icon">{{ done.length ? '🎉' : '🧺' }}</div>
           <p>{{ done.length ? t('empty.allDone') : store !== 'all' ? t('empty.nothingIn', { store: storeName(store) }) : t('empty.nothing') }}</p>
           <template v-if="!done.length && usuals.length">
             <p class="hint">{{ t('empty.startUsuals') }}</p>
@@ -338,7 +336,7 @@ onMounted(() => {
         </div>
 
         <section v-if="due.length" class="habits">
-          <h2><span class="emoji">🔁</span>{{ t('habits.title') }}</h2>
+          <h2>{{ t('habits.title') }}</h2>
           <div class="usuals">
             <button v-for="d in due" :key="d.name" type="button" @click="add(d.name)">
               {{ d.name }}<small>{{ t('habits.every', { n: d.every }) }}</small>
@@ -348,7 +346,7 @@ onMounted(() => {
 
         <TransitionGroup name="sec" tag="div" class="secs">
           <section v-for="grp in groups" :key="grp.cat" :style="{ '--c': catColor(grp.cat) }">
-            <h2><span class="emoji">{{ catIcon(grp.cat) }}</span>{{ catLabel(grp.cat) }}<span class="n">{{ grp.items.length }}</span></h2>
+            <h2><i class="swatch"></i>{{ catLabel(grp.cat) }}<span class="n">{{ grp.items.length }}</span></h2>
             <TransitionGroup name="row" tag="div" class="rows">
               <SwipeRow
                 v-for="g in grp.items" :key="g.id" :data-id="g.id"
@@ -413,7 +411,7 @@ onMounted(() => {
               <button
                 v-for="c in aisles" :key="c" type="button" class="chip" :class="{ on: freshCat === c }"
                 @pointerdown.prevent @click="pickCat = c"
-              >{{ catIcon(c) }} {{ catLabel(c) }}</button>
+              >{{ catLabel(c) }}</button>
             </div>
             <template v-if="store === 'all' && meta.stores.length > 1">
               <div class="fresh-label">{{ t('new.store') }}</div>
@@ -433,11 +431,11 @@ onMounted(() => {
             <button type="button" class="link" @pointerdown.prevent @click="closePanel">{{ t('add.done') }}</button>
           </div>
           <button v-for="s in suggestions" :key="s.name" type="button" class="sugg" @pointerdown.prevent @click="pick(s.name)">
-            <span class="emoji">{{ catIcon(s.cat) }}</span>
+            <i class="swatch" :style="{ '--c': catColor(s.cat) }"></i>
             <b>{{ s.name }}</b><span class="meta">{{ s.on ? t('add.inList', { n: s.on.qty }) : catLabel(s.cat) }}</span><i>+</i>
           </button>
           <button v-if="fresh && !freshCard" type="button" class="sugg sugg-new" @pointerdown.prevent @click="freshOpen = true">
-            <span class="emoji">＋</span><b>{{ t('new.row', { name: fresh.name }) }}</b><span class="meta"></span><i>›</i>
+            <span class="plus">+</span><b>{{ t('new.row', { name: fresh.name }) }}</b><span class="meta"></span><i>›</i>
           </button>
         </div>
         <div v-else-if="panel === 'usuals'" class="panel">
@@ -453,7 +451,7 @@ onMounted(() => {
           <template v-if="S.templates.length">
             <div class="panel-title">{{ t('add.templates') }}</div>
             <div class="usuals">
-              <button v-for="tp in S.templates" :key="tp.id" type="button" @pointerdown.prevent @click="addMany(tp.items)">📋 {{ tp.name }}</button>
+              <button v-for="tp in S.templates" :key="tp.id" type="button" @pointerdown.prevent @click="addMany(tp.items)">{{ tp.name }}</button>
             </div>
           </template>
           <div class="panel-hint">{{ t('add.hint') }}</div>
@@ -474,11 +472,11 @@ onMounted(() => {
     </Transition>
 
     <Transition name="sheet" :duration="320">
-      <EditSheet v-if="editing" :key="editing.id" :item="editing" :meta="meta" :cat-icon="catIcon" @close="editing = null" @save="save" @remove="drop(editing)" />
+      <EditSheet v-if="editing" :key="editing.id" :item="editing" :meta="meta" @close="editing = null" @save="save" @remove="drop(editing)" />
     </Transition>
 
     <Transition name="sheet" :duration="320">
-      <TripsSheet v-if="showTrips" :store-name="storeName" :cat-icon="catIcon" :pending="open" @close="showTrips = false" @add="addMany" @remove-trip="deleteTrip" />
+      <TripsSheet v-if="showTrips" :store-name="storeName" :pending="open" @close="showTrips = false" @add="addMany" @remove-trip="deleteTrip" />
     </Transition>
     <Transition name="sheet" :duration="320">
       <FinishSheet

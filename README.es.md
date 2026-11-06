@@ -2,7 +2,7 @@
 
 [English](README.md) · **Español**
 
-[![Demo en vivo](https://img.shields.io/badge/demo%20en%20vivo-pru%C3%A9bala-2f7d5b)](https://davidniin.github.io/grocery-list/)
+[![Demo en vivo](https://img.shields.io/badge/demo%20en%20vivo-pru%C3%A9bala-b3274b)](https://davidniin.github.io/grocery-list/)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
 [![Invítame a un café](https://img.shields.io/badge/inv%C3%ADtame%20a%20un%20caf%C3%A9-☕-ffdd00)](https://buymeacoffee.com/davidniin)
 
