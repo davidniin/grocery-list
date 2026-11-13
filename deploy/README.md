@@ -14,7 +14,7 @@ Phone / browser → Cloudflare Access → tunnel → grocery (PWA + /v1 API) ─
   itself (`CF_ACCESS_TEAM_DOMAIN` + `CF_ACCESS_AUD`), so a misconfigured Access rule doesn't
   open it. Use a long Access session (e.g. 1 month): when it expires, the installed app keeps
   working offline but stops syncing until you open it once and log in again.
-- Without any access control configured, the app refuses to start and `deploy.sh` refuses to
+- Without any access control configured, the app refuses to start and `deploy-grocery` refuses to
   deploy (before touching the running version).
 - HTTPS comes from Cloudflare, which is what the phone needs to install the app.
 
@@ -35,17 +35,49 @@ anything calls the API without going through Cloudflare (the tablet dashboard), 
 `GROCERY_TOKEN=$(openssl rand -hex 24)`. The other variables have working defaults (see
 `deploy/.env.example`).
 
-### 2. A runner for this repo
+### 2. An isolated runner for this repo
 
-Runners belong to one repository, so this repo needs its own. In the repo: *Settings → Actions →
-Runners → New self-hosted runner → Linux x64*, in a separate folder:
+The repo is public, so the runner that deploys it must not be able to do much even if someone got
+code into `main`. The runner is a dedicated user **without sudo, Docker or access to other projects**
+(`gr-grocery`); the only thing it can do as root is run one script that takes a commit hash.
 
 ```bash
-mkdir -p ~/actions-runner-grocery && cd ~/actions-runner-grocery
-# Download + extract with the commands GitHub shows (skip its mkdir/cd line), then:
-# ./config.sh --url ... --token ...   runner name: homelab-grocery, additional labels: homelab
-sudo ./svc.sh install $USER && sudo ./svc.sh start
+# the user: no password login, no extra groups
+sudo adduser --disabled-password --gecos "" gr-grocery
+
+# trusted compose file, owned by root: the runner (and the repo) cannot change it
+sudo install -d -m 755 -o root -g root /opt/grocery-deploy
+sudo install -m 644 -o root -g root ~/homelab/grocery/compose.yml /opt/grocery-deploy/compose.yml
+
+# the deploy script (deploy/server/deploy-grocery): review it, then install it as root
+sudo install -m 755 -o root -g root deploy/server/deploy-grocery /usr/local/sbin/deploy-grocery
+sudo touch /var/log/deploy-grocery.log && sudo chmod 600 /var/log/deploy-grocery.log
+
+# sudo rule: that one command and nothing else (visudo checks it before installing)
+echo 'gr-grocery ALL=(root) NOPASSWD: /usr/local/sbin/deploy-grocery' | sudo tee /tmp/gr-grocery.sudoers >/dev/null
+sudo visudo -cf /tmp/gr-grocery.sudoers && sudo install -m 440 -o root -g root /tmp/gr-grocery.sudoers /etc/sudoers.d/gr-grocery
+sudo rm /tmp/gr-grocery.sudoers
 ```
+
+The image package (`ghcr.io/davidniin/grocery-list`) is **public** (it only holds the public source;
+secrets come from `.env` at run time), so root pulls it with no credentials stored on the server.
+
+Then the runner, as that user. In the repo: *Settings → Actions → Runners → New self-hosted runner →
+Linux x64*; follow GitHub's download steps inside `sudo -iu gr-grocery`, but configure it with:
+
+```bash
+./config.sh --url https://github.com/davidniin/grocery-list --token <TOKEN> --name homelab-grocery-isolated --labels gr-grocery --unattended
+exit
+sudo bash -c 'cd /home/gr-grocery/actions-runner && ./svc.sh install gr-grocery && ./svc.sh start'
+```
+
+**Changing `deploy/compose.yml`:** the deploy uses the copy in `/opt/grocery-deploy/`, not the repo's,
+on purpose. After merging a compose change, review it and copy it by hand
+(`diff deploy/compose.yml /opt/grocery-deploy/compose.yml`, then `sudo install -m 644 -o root -g root ...`).
+App code changes need nothing: they travel inside the image.
+
+Deploy details (the public workflow log only shows short messages): `sudo tail -50 /var/log/deploy-grocery.log`.
+By hand: `sudo /usr/local/sbin/deploy-grocery <40-character commit sha>`.
 
 ### 3. Tunnel network and route
 
@@ -85,7 +117,7 @@ Then copy into the server's `.env`:
   *Read repository contents*.
 - **Code security:** Dependabot alerts + security updates, secret scanning + push protection,
   private vulnerability reporting.
-- **Packages → grocery-list:** private, and *Manage Actions access* gives this repo *Write*.
+- **Packages → grocery-list:** public (no secrets inside), and *Manage Actions access* gives this repo *Write*.
 
 ### 5. Merge → first deploy, then install on the phone
 

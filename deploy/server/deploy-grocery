@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Despliega la lista de la compra. Lo ejecuta root vía sudo; el runner solo pasa el hash del commit.
+set -euo pipefail
+umask 077
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+ENV_FILE=/home/david/homelab/grocery/.env
+COMPOSE=/opt/grocery-deploy/compose.yml
+LOG=/var/log/deploy-grocery.log
+TUNNEL_NETWORK=tunnel-grocery
+TIMEOUT_SECONDS=180
+
+sha="${1:-}"
+if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then echo "Invalid commit hash" >&2; exit 1; fi
+
+exec 9>/run/deploy-grocery.lock
+flock -n 9 || { echo "Another deploy is running" >&2; exit 1; }
+
+# El detalle va al log del servidor; el workflow (público) solo recibe mensajes cortos.
+exec 3>&1 4>&2
+exec >>"$LOG" 2>&1
+say() { echo "$*" >&3; }
+trap 'rc=$?; (( rc == 0 )) || say "FAILED (details in $LOG on the server)"' EXIT
+
+dc() { IMAGE_TAG="$sha" docker compose --project-name grocery --env-file "$ENV_FILE" -f "$COMPOSE" "$@"; }
+env_value() { sed -n "s/^$1=//p" "$ENV_FILE" | tail -1 | tr -d '"'"'"' '; }
+
+echo "=== $(date -Is) deploy $sha"
+say "Deploying $sha"
+
+[[ -f "$ENV_FILE" ]] || { echo "Missing $ENV_FILE"; exit 1; }
+if [[ -z "$(env_value GROCERY_TOKEN)" && ( -z "$(env_value CF_ACCESS_TEAM_DOMAIN)" || -z "$(env_value CF_ACCESS_AUD)" ) ]]; then
+  echo "No access control in .env"; exit 1
+fi
+token="$(env_value GROCERY_TOKEN)"
+if [[ -n "$token" && ${#token} -lt 24 ]]; then echo "GROCERY_TOKEN too short"; exit 1; fi
+
+if ! docker network inspect "$TUNNEL_NETWORK" -f '{{range .Containers}}{{.Name}} {{end}}' | grep -q cloudflared; then
+  echo "cloudflared is not on $TUNNEL_NETWORK"; exit 1
+fi
+
+dc pull --quiet
+dc up -d --remove-orphans
+
+deadline=$((SECONDS + TIMEOUT_SECONDS))
+until [[ "$(docker inspect -f '{{.State.Health.Status}}' "$(dc ps -q grocery)")" == "healthy" ]]; do
+  if (( SECONDS >= deadline )); then
+    echo "Timed out waiting for the app"; dc ps -a; dc logs --no-color --tail 60; exit 1
+  fi
+  sleep 3
+done
+dc exec -T grocery wget -qO- http://127.0.0.1:8790/v1/health; echo
+
+# Apuntar IMAGE_TAG en el .env sin cambiar su dueño ni sus permisos
+content="$( { grep -v '^IMAGE_TAG=' "$ENV_FILE" || true; echo "IMAGE_TAG=$sha"; } )"
+printf '%s\n' "$content" > "$ENV_FILE"
+
+docker image prune -f >/dev/null
+echo "=== deployed $sha"
+say "Deployed $sha"

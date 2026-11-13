@@ -21,7 +21,7 @@ x-logging: &logging
 services:
   grocery:
     <<: [*restart, *logging]
-    image: ghcr.io/davidniin/grocery-list:${IMAGE_TAG:?IMAGE_TAG is not set - deploy.sh writes it to .env, see deploy/README.md}
+    image: ghcr.io/davidniin/grocery-list:${IMAGE_TAG:?IMAGE_TAG is not set - deploy-grocery writes it to .env, see deploy/README.md}
     depends_on:
       db:
         condition: service_healthy
