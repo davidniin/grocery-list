@@ -1,8 +1,9 @@
 name: Deploy
 
 # Every push to main runs CI, builds the image, pushes it to GitHub Container Registry
-# and the homelab's runner deploys it. The "production" environment must be limited to
-# the main branch (Settings -> Environments), so no other branch can reach the runner.
+# and the homelab's isolated runner asks a root-owned script on the server to deploy it.
+# The "production" environment must be limited to the main branch (Settings -> Environments),
+# with a required reviewer, so no other branch can reach the runner.
 on:
   push:
     branches: [main]
@@ -59,29 +60,16 @@ jobs:
   deploy:
     name: Deploy to the homelab
     needs: build
-    runs-on: [self-hosted, homelab]
-    permissions:
-      contents: read
-      packages: read
+    # Isolated runner: user gr-grocery, no Docker and no sudo except the one root-owned script below.
+    runs-on: [self-hosted, gr-grocery]
+    permissions: {}
     environment:
       name: production
       url: https://grocery-list.davidnin.dev
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
+      # No checkout: no code from this repo runs on the homelab. The script only receives the commit
+      # hash and deploys that image with the compose file kept on the server (see deploy/README.md).
       - name: Deploy
         env:
           IMAGE_TAG: ${{ github.sha }}
-        run: bash deploy/scripts/deploy.sh
-
-      - name: Log out of the registry
-        if: always()
-        run: docker logout ghcr.io || true
+        run: sudo -n /usr/local/sbin/deploy-grocery "$IMAGE_TAG"
